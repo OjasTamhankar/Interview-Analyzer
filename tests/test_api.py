@@ -36,6 +36,7 @@ class TestConfig:
         assert "runtime" in payload
         assert "upload_types" in payload
         assert "cors_allow_origins" in payload["runtime"]
+        assert "cors_allow_origin_regex" in payload["runtime"]
 
     def test_resolve_cors_origins_supports_csv_and_wildcard(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("CORS_ALLOW_ORIGINS", "https://app.example.com, https://admin.example.com")
@@ -43,6 +44,21 @@ class TestConfig:
 
         monkeypatch.setenv("CORS_ALLOW_ORIGINS", "*")
         assert api._resolve_cors_origins() == ["*"]
+
+    def test_resolve_cors_origin_regex_prefers_env(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("CORS_ALLOW_ORIGIN_REGEX", r"^https://preview\.example\.com$")
+        assert api._resolve_cors_origin_regex() == r"^https://preview\.example\.com$"
+
+    def test_preflight_allows_local_vite_origin(self) -> None:
+        response = client.options(
+            "/api/config",
+            headers={
+                "Origin": "http://127.0.0.1:5173",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+        assert response.status_code == 200
+        assert response.headers["access-control-allow-origin"] == "http://127.0.0.1:5173"
 
 
 class TestFrontendServing:

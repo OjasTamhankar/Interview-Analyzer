@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 
-const API_BASE_URL = "https://interview-analyzer-pbpf.onrender.com";
-const DEFAULT_ANALYSIS_MODEL = "openrouter/free";
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").trim() || window.location.origin;
+const DEFAULT_ANALYSIS_MODEL = "openai/gpt-oss-120b:free";
+const REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_REQUEST_TIMEOUT_MS || "180000");
 const SUPPORTED_EXTENSIONS = ["mp3", "wav", "mp4", "avi", "mov", "m4a", "webm", "ogg", "aac"];
 
 const TABS = [
@@ -21,14 +22,38 @@ function formatScore(value) {
 }
 
 function requestErrorMessage(error) {
+  if (error && typeof error === "object" && "name" in error) {
+    if (error.name === "AbortError" || error.name === "TimeoutError") {
+      return `The request timed out after ${Math.round(REQUEST_TIMEOUT_MS / 1000)} seconds.`;
+    }
+  }
   if (error instanceof Error) {
     return error.message;
   }
   return "Something went wrong.";
 }
 
+function withRequestTimeout(options = {}) {
+  if (options.signal) {
+    return options;
+  }
+
+  if (!Number.isFinite(REQUEST_TIMEOUT_MS) || REQUEST_TIMEOUT_MS <= 0) {
+    return options;
+  }
+
+  if (typeof AbortSignal === "undefined" || typeof AbortSignal.timeout !== "function") {
+    return options;
+  }
+
+  return {
+    ...options,
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  };
+}
+
 async function requestJson(url, options = {}) {
-  const response = await fetch(url, options);
+  const response = await fetch(url, withRequestTimeout(options));
   const text = await response.text();
   let payload = {};
 
@@ -88,7 +113,7 @@ function AnalysisResults({ result }) {
         </div>
         <div className="hero-result__badges">
           <StatusPill label={analysis.hire_recommendation || "Borderline"} tone={ratingTone} />
-          <StatusPill label={analysis.model_used || "openrouter/free"} tone="neutral" />
+          <StatusPill label={analysis.model_used || DEFAULT_ANALYSIS_MODEL} tone="neutral" />
         </div>
       </div>
 
@@ -140,7 +165,7 @@ function AnalysisResults({ result }) {
             </div>
             <div className="detail-row">
               <span>Requested model</span>
-              <strong>{analysis.model_requested || "openrouter/free"}</strong>
+              <strong>{analysis.model_requested || DEFAULT_ANALYSIS_MODEL}</strong>
             </div>
             <div className="detail-row">
               <span>Actual model</span>
@@ -195,7 +220,6 @@ function App() {
         }
       } catch (error) {
         if (!cancelled) {
-          console.error("API ERROR:", error);
           setConfigError(requestErrorMessage(error));
         }
       }
@@ -240,11 +264,9 @@ function App() {
       const payload = await requestJson(`${API_BASE_URL}/api/analyze`, {
         method: "POST",
         body: formData,
-        signal: AbortSignal.timeout(30000) // 30 sec max
       });
       setUploadResult(payload.data);
     } catch (error) {
-      console.error("API ERROR:", error);
       setUploadError(requestErrorMessage(error));
     } finally {
       setUploadLoading(false);
@@ -279,11 +301,9 @@ function App() {
           filler_count: parsedFillers,
           router_model: textRouterModel,
         }),
-        signal: AbortSignal.timeout(30000) // 30 sec max
       });
       setTextResult(payload.data);
     } catch (error) {
-      console.error("API ERROR:", error);
       setTextError(requestErrorMessage(error));
     } finally {
       setTextLoading(false);

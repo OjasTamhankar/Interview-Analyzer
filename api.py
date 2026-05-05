@@ -27,17 +27,20 @@ FRONTEND_DIST_DIR = PROJECT_ROOT / "frontend" / "dist"
 FRONTEND_INDEX = FRONTEND_DIST_DIR / "index.html"
 FRONTEND_ASSETS_DIR = FRONTEND_DIST_DIR / "assets"
 DEFAULT_WHISPER_MODEL = os.getenv("WHISPER_MODEL", "tiny").strip() or "tiny"
-DEFAULT_ROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/free").strip() or "openrouter/free"
+DEFAULT_ROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openai/gpt-oss-120b:free").strip() or "openai/gpt-oss-120b:free"
 MAX_STORED_RESULTS = 100
 DEFAULT_CORS_ALLOW_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://localhost:3000",
     "http://127.0.0.1:8010",
     "http://localhost:8010",
+    "https://127.0.0.1:3000",
     "https://localhost:3000",
-    "https://*.vercel.app",
-    "https://*.netlify.app",
+    "https://interview-analyzer-sigma.vercel.app",
 ]
+DEFAULT_CORS_ALLOW_ORIGIN_REGEX = r"^https://.*\.vercel\.app$|^https://.*\.netlify\.app$"
 
 
 class TextAnalysisRequest(BaseModel):
@@ -58,8 +61,16 @@ def _resolve_cors_origins() -> list[str]:
     return origins or DEFAULT_CORS_ALLOW_ORIGINS.copy()
 
 
+def _resolve_cors_origin_regex() -> str | None:
+    configured = os.getenv("CORS_ALLOW_ORIGIN_REGEX", "").strip()
+    if configured:
+        return configured
+    return DEFAULT_CORS_ALLOW_ORIGIN_REGEX
+
+
 CORS_ALLOW_ORIGINS = _resolve_cors_origins()
 CORS_ALLOW_CREDENTIALS = CORS_ALLOW_ORIGINS != ["*"]
+CORS_ALLOW_ORIGIN_REGEX = None if CORS_ALLOW_ORIGINS == ["*"] else _resolve_cors_origin_regex()
 
 
 app = FastAPI(
@@ -70,10 +81,9 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://interview-analyzer-sigma.vercel.app"
-    ],
-    allow_credentials=False,   # 🔥 important (no browser conflict)
+    allow_origins=CORS_ALLOW_ORIGINS,
+    allow_origin_regex=CORS_ALLOW_ORIGIN_REGEX,
+    allow_credentials=CORS_ALLOW_CREDENTIALS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -99,6 +109,7 @@ def _build_runtime_status() -> dict[str, Any]:
         "default_whisper_model": DEFAULT_WHISPER_MODEL,
         "default_router_model": DEFAULT_ROUTER_MODEL,
         "cors_allow_origins": CORS_ALLOW_ORIGINS,
+        "cors_allow_origin_regex": CORS_ALLOW_ORIGIN_REGEX,
     }
 
 
@@ -129,11 +140,15 @@ async def analyze_upload(
     whisper_model: str | None = Form(default=None, description="Whisper model name."),
     router_model: str | None = Form(default=None, description="OpenRouter model or router name."),
 ) -> dict[str, Any]:
-    print("🔥 HIT /api/analyze (file upload)")
     resolved_whisper_model = str(whisper_model or DEFAULT_WHISPER_MODEL).strip()
     resolved_router_model = str(router_model or DEFAULT_ROUTER_MODEL).strip()
 
-    logging.info(f"Starting analysis for file {file.filename} with whisper_model={resolved_whisper_model}, router_model={resolved_router_model}")
+    logging.info(
+        "Starting analysis for file %s with whisper_model=%s, router_model=%s",
+        file.filename,
+        resolved_whisper_model,
+        resolved_router_model,
+    )
 
     if file is None or not file.filename:
         raise HTTPException(status_code=400, detail="No file was uploaded.")
@@ -149,11 +164,16 @@ async def analyze_upload(
             temp_file.write(content)
             temp_path = Path(temp_file.name)
 
-        logging.info(f"File saved to {temp_path}, starting transcription")
+        logging.info("File saved to %s, starting transcription", temp_path)
 
         transcription_result = transcribe_media(temp_path, whisper_model=resolved_whisper_model)
 
-        logging.info(f"Transcription completed: {len(transcription_result['transcription'])} chars, duration {transcription_result['duration_seconds']}s, WPM {transcription_result['wpm']}")
+        logging.info(
+            "Transcription completed: %s chars, duration %ss, WPM %s",
+            len(transcription_result["transcription"]),
+            transcription_result["duration_seconds"],
+            transcription_result["wpm"],
+        )
 
         result = analyze_transcript_text(
             transcription=str(transcription_result["transcription"]),
@@ -188,12 +208,11 @@ async def analyze_upload(
 
 @app.post("/api/analyze-text")
 async def analyze_text(payload: TextAnalysisRequest) -> dict[str, Any]:
-    print("🔥 HIT /api/analyze-text")
     transcription = payload.transcription.strip()
     if count_words(transcription) < 3:
         raise HTTPException(status_code=400, detail="Transcription must contain at least 3 words.")
 
-    logging.info(f"Starting text analysis for {len(transcription)} chars")
+    logging.info("Starting text analysis for %s chars", len(transcription))
 
     try:
         result = analyze_transcript_text(

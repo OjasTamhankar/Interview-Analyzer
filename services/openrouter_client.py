@@ -10,7 +10,7 @@ import requests
 
 
 DEFAULT_OPENROUTER_API_BASE = "https://openrouter.ai/api/v1/chat/completions"
-DEFAULT_OPENROUTER_MODEL = "openrouter/free"
+DEFAULT_OPENROUTER_MODEL = "openai/gpt-oss-120b:free"
 FALLBACK_OPENROUTER_MODELS = ["openrouter/free"]
 
 SYSTEM_PROMPT = """

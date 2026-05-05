@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: interview-analyzer
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    region: singapore
+    plan: starter
+    autoDeployTrigger: commit
+    healthCheckPath: /health
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODEL
+        value: openai/gpt-oss-120b:free
+      - key: WHISPER_MODEL
+        value: tiny
