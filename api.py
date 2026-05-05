@@ -34,6 +34,9 @@ DEFAULT_CORS_ALLOW_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:8010",
     "http://localhost:8010",
+    "https://localhost:3000",
+    "https://*.vercel.app",
+    "https://*.netlify.app",
 ]
 
 
