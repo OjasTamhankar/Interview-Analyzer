@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+.pytest_cache/
+venv/
+.venv/
+ENV/
+env/
+*.env
+
+# Node
+frontend/node_modules/
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Editor
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+

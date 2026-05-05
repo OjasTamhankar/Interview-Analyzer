@@ -1,0 +1,7 @@
+cd "D:\BTech\Sem 6\AML\Pro\openrouter_interview_analyzer\frontend"
+npm run build
+
+cd "D:\BTech\Sem 6\AML\Pro\openrouter_interview_analyzer"
+python api.py
+
+python api.py
