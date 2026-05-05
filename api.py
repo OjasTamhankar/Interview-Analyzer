@@ -70,8 +70,10 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ALLOW_ORIGINS,
-    allow_credentials=CORS_ALLOW_CREDENTIALS,
+    allow_origins=[
+        "https://interview-analyzer-sigma.vercel.app"
+    ],
+    allow_credentials=False,   # 🔥 important (no browser conflict)
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -127,6 +129,7 @@ async def analyze_upload(
     whisper_model: str | None = Form(default=None, description="Whisper model name."),
     router_model: str | None = Form(default=None, description="OpenRouter model or router name."),
 ) -> dict[str, Any]:
+    print("🔥 HIT /api/analyze (file upload)")
     resolved_whisper_model = str(whisper_model or DEFAULT_WHISPER_MODEL).strip()
     resolved_router_model = str(router_model or DEFAULT_ROUTER_MODEL).strip()
 
@@ -185,6 +188,7 @@ async def analyze_upload(
 
 @app.post("/api/analyze-text")
 async def analyze_text(payload: TextAnalysisRequest) -> dict[str, Any]:
+    print("🔥 HIT /api/analyze-text")
     transcription = payload.transcription.strip()
     if count_words(transcription) < 3:
         raise HTTPException(status_code=400, detail="Transcription must contain at least 3 words.")

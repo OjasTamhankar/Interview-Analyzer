@@ -195,6 +195,7 @@ function App() {
         }
       } catch (error) {
         if (!cancelled) {
+          console.error("API ERROR:", error);
           setConfigError(requestErrorMessage(error));
         }
       }
@@ -239,9 +240,11 @@ function App() {
       const payload = await requestJson(`${API_BASE_URL}/api/analyze`, {
         method: "POST",
         body: formData,
+        signal: AbortSignal.timeout(30000) // 30 sec max
       });
       setUploadResult(payload.data);
     } catch (error) {
+      console.error("API ERROR:", error);
       setUploadError(requestErrorMessage(error));
     } finally {
       setUploadLoading(false);
@@ -276,9 +279,11 @@ function App() {
           filler_count: parsedFillers,
           router_model: textRouterModel,
         }),
+        signal: AbortSignal.timeout(30000) // 30 sec max
       });
       setTextResult(payload.data);
     } catch (error) {
+      console.error("API ERROR:", error);
       setTextError(requestErrorMessage(error));
     } finally {
       setTextLoading(false);
