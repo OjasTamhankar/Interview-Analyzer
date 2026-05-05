@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").trim() || window.location.origin;
+const API_BASE_URL = "https://interview-analyzer-pbpf.onrender.com";
 const DEFAULT_ANALYSIS_MODEL = "openrouter/free";
 const SUPPORTED_EXTENSIONS = ["mp3", "wav", "mp4", "avi", "mov", "m4a", "webm", "ogg", "aac"];
 
